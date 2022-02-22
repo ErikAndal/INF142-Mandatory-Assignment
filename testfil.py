@@ -1,1 +1,0 @@
-# fil for å teste git/vs-code.
