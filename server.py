@@ -9,7 +9,6 @@ serverPort = 8888
 serverSocket = socket(AF_INET, SOCK_STREAM)
 serverSocket.bind(('', serverPort))
 serverSocket.listen(1)
-print('The server is ready to receive')
 connectionSocket, addr = serverSocket.accept()
 
 def flip(number):
@@ -84,12 +83,6 @@ def print_match_summary(match: Match) -> None:
 
 
 def main() -> None:
-
-    
-    #sentence = connectionSocket.recv(2048).decode()
-    #newSentence = sentence
-    #connectionSocket.send(newSentence.encode())
-    #connectionSocket.close()
     
     player1 = []
     player2 = []
