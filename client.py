@@ -1,8 +1,54 @@
+from selectors import DefaultSelector
 from socket import *
 from rich import print
 from rich.table import Table
+#from Server import DISCONNECT_MESSAGE
 from champlistloader import load_some_champs
-from core import Champion
+from core import Champion, Match, Shape
+import pickle
+
+def print_match_summary(match: Match) -> None:
+
+    EMOJI = {
+        Shape.ROCK: ':raised_fist-emoji:',
+        Shape.PAPER: ':raised_hand-emoji:',
+        Shape.SCISSORS: ':victory_hand-emoji:'
+    }
+
+    # For each round print a table with the results
+    for index, round in enumerate(match.rounds):
+
+        # Create a table containing the results of the round
+        round_summary = Table(title=f'Round {index+1}')
+
+        # Add columns for each team
+        round_summary.add_column("Red",
+                                 style="red",
+                                 no_wrap=True)
+        round_summary.add_column("Blue",
+                                 style="blue",
+                                 no_wrap=True)
+
+        # Populate the table
+        for key in round:
+            red, blue = key.split(', ')
+            round_summary.add_row(f'{red} {EMOJI[round[key].red]}',
+                                  f'{blue} {EMOJI[round[key].blue]}')
+        print(round_summary)
+        print('\n')
+
+    # Print the score
+    red_score, blue_score = match.score
+    print((f'Red: {red_score}\n'
+          f'Blue: {blue_score}'))
+
+    # Print the winner
+    if red_score > blue_score:
+        print(('\n[red]Red victory! :grin:'))
+    elif red_score < blue_score:
+        print(('\n[blue]Blue victory! :grin:'))
+    else:
+        print(('\nDraw :expressionless:'))
 
 def print_available_champs(champions: dict[Champion]) -> None:
 
@@ -22,28 +68,40 @@ def print_available_champs(champions: dict[Champion]) -> None:
 
     print(available_champs)
 
+def makeMatchObject(sentence):
+    print('FRA MAKEOBJECT FRA MAKEOBJECT FRA MAKEOBJECT FRA MAKEOBJECT FRA MAKEOBJECT')
+    str = pickle.loads(sentence)
+    print_match_summary(str)
+
+
+
 print('\n'
-          'Welcome to [bold yellow]Team Local Tactics[/bold yellow]!'
-          '\n'
-          'Each player choose a champion each time.'
-          '\n')
+    'Welcome to [bold yellow]Team Local Tactics[/bold yellow]!'
+    '\n'
+    'Each player choose a champion each time.'
+    '\n')
 
 champions = load_some_champs()
 print_available_champs(champions)
 
 print('\n')
 
-serverName = 'localhost'
-serverPort = 8888
-clientSocket = socket(AF_INET, SOCK_STREAM)
-clientSocket.connect((serverName, serverPort))
+sock = socket()
+server_address = ("localhost", 8888)
+sock.connect(server_address)
+
+print('Type champion name followed by Return\n')
 
 while True:
-    modifiedSentence = clientSocket.recv(2048).decode()
-    print(modifiedSentence)
-    sentence = input('')
-    clientSocket.send((sentence).encode())
-    if sentence == 'close':
-        break
+    new_sentence = sock.recv(4096).decode('utf-8', 'ignore')
 
-clientSocket.close()
+    if new_sentence == 'incomming match summary\n':
+        sentence = sock.recv(4096)
+        makeMatchObject(sentence)
+        sock.close()
+        break
+        
+    print(new_sentence)
+    sentence = input('')
+    sock.send(sentence.encode())
+    

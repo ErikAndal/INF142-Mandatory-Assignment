@@ -4,39 +4,38 @@ from rich.prompt import Prompt
 from rich.table import Table
 from champlistloader import load_some_champs
 from core import Champion, Match, Shape, Team
-
-serverPort = 8888
-serverSocket = socket(AF_INET, SOCK_STREAM)
-serverSocket.bind(('', serverPort))
-serverSocket.listen(1)
-connectionSocket, addr = serverSocket.accept()
-
-def flip(number):
-    number += (1 % 2)
-    return number
+from selectors import EVENT_READ, EVENT_WRITE, DefaultSelector
+from threading import Thread
+from socket import create_server
+import time
+import pickle
 
 def input_champion(prompt: str,
                    color: str,
                    champions: dict[Champion],
                    player1: list[str],
-                   player2: list[str]) -> None:
+                   player2: list[str], sock) -> None:
 
     # Prompt the player to choose a champion and provide the reason why
     # certain champion cannot be selected
-
+    
     while True:
-        connectionSocket.send(f'[{color}]{prompt}:'.encode())
+        # Open for blocking, else I get: "BlockingIOError: [Errno 35] Resource temporarily unavailable"
+        sock.setblocking(True)
+        sock.send(f'[{color}]{prompt}:\r'.encode())
         
-        match connectionSocket.recv(2048).decode():
+        match sock.recv(2048).decode():
             case name if name not in champions:
-                connectionSocket.send((f'The champion "{name}" is not available. Try again.').encode())
+                sock.send((f'The champion "{name}" is not available. Try again.\n').encode())
             case name if name in player1:
-                connectionSocket.send((f'{name} is already in your team. Try again.').encode())
+                sock.send((f'{name} is already in your team. Try again.\n').encode())
             case name if name in player2:
-                connectionSocket.send((f'{name} is in the enemy team. Try again.').encode())
+                sock.send((f'{name} is in the enemy team. Try again.\n').encode())
             case _:
                 player1.append(name)
                 break
+
+
 
 def print_match_summary(match: Match) -> None:
 
@@ -70,20 +69,21 @@ def print_match_summary(match: Match) -> None:
 
     # Print the score
     red_score, blue_score = match.score
-    connectionSocket.send((f'Red: {red_score}\n'
-          f'Blue: {blue_score}').encode())
+    print((f'Red: {red_score}\n'
+          f'Blue: {blue_score}'))
 
     # Print the winner
     if red_score > blue_score:
-        connectionSocket.send(('\n[red]Red victory! :grin:').encode())
+        print(('\n[red]Red victory! :grin:'))
     elif red_score < blue_score:
-        connectionSocket.send(('\n[blue]Blue victory! :grin:').encode())
+        print(('\n[blue]Blue victory! :grin:'))
     else:
-        connectionSocket.send(('\nDraw :expressionless:').encode())
+        print(('\nDraw :expressionless:'))
 
 
 def main() -> None:
-    
+    print('game running..')
+
     player1 = []
     player2 = []
 
@@ -91,8 +91,8 @@ def main() -> None:
 
     # Champion selection
     for _ in range(2):
-        input_champion('Player 1', 'red', champions, player1, player2)
-        input_champion('Player 2', 'blue', champions, player2, player1)
+        input_champion('Player 1', 'red', champions, player1, player2, socketList[0])
+        input_champion('Player 2', 'blue', champions, player2, player1, socketList[2])
 
     print('\n')
 
@@ -104,9 +104,132 @@ def main() -> None:
     match.play()
 
     # Print a summary
+    
     print_match_summary(match)
 
+    socketList[0].send('incomming match summary\n'.encode())
+    socketList[2].send('incomming match summary\n'.encode())
+    time.sleep(1)
+    
+    msg = pickle.dumps(match)
+    
+    socketList[0].send(msg)
+    socketList[2].send(msg)
+'''
+    
+    socketList[2].send('matchSummeryIncomming'.encode())
 
-if __name__ == '__main__':
-    main()
+    scoreToString = ''.join(str(match.score))
+    roundToString = ''.join(str(match.rounds))
+    
+    socketList[0].send(scoreToString.encode())
+    socketList[2].send(scoreToString.encode())
+    socketList[0].send(roundToString.encode())
+    socketList[2].send(roundToString.encode())'''
 
+
+#if __name__ == '__main__':
+   # main()
+
+
+sel = DefaultSelector()
+sock = socket()
+sock.setsockopt(SOL_SOCKET, SO_REUSEADDR, 1)
+sock.bind(('localhost', 8888))
+sock.listen()
+sock.setblocking(False)
+sel.register(sock, EVENT_READ, True)
+
+socketList = []
+
+def accept(sock):
+    conn, address = sock.accept()
+    print('accepted', conn, 'from', address)
+    conn.setblocking(False)
+    socketList.append(conn)
+    sel.register(conn, EVENT_READ)
+    socketList.append(sel)
+    print('len: ', len(socketList))
+    if len(socketList) >= 4:
+        main()
+    
+
+def read(conn):
+    data = conn.recv(4096)
+    if data:
+        sentence = data.decode()
+        print(sentence)
+        conn.send(sentence.encode())
+
+    else:
+        print('Closing', conn)
+        sel.unregister(conn)
+        conn.close()
+    
+
+while True:
+    events = sel.select()
+    for key, _ in events:
+        if key.data:
+            accept(key.fileobj)
+        else:
+            read(key.fileobj)
+
+
+
+
+
+'''
+
+sel = DefaultSelector()
+sock = socket(AF_INET, SOCK_STREAM)
+sock.setsockopt(SOL_SOCKET, SO_REUSEADDR, 1)
+sock.bind(('localhost', 8888))
+sock.listen()
+sock.setblocking(False)
+sel.register(sock, EVENT_READ, True)
+
+def accept(sock):
+    conn, address = sock.accept()
+    print('accepted', conn, 'from', address)
+    conn.setblocking(False) 
+    sel.register(conn, EVENT_READ)
+
+def read(conn):
+    data = conn.recv(1024)
+    if data:
+        sentence = data.decode()
+        new_sentence = sentence.upper()
+        conn.send(new_sentence.encode())
+    else:
+        print('Closing', conn)
+        sel.unregister(conn)
+        conn.close()
+
+while True:
+    events = sel.select()
+    for key, _ in events:
+        if key.data:
+            accept(key.fileobj)
+        else:
+            read(key.fileobj)
+
+def handle_client(socketList, addr):
+    print(f'[NEW CONNECTION] {addr} connected.')
+    connected = True
+    while connected:
+        msg = socketList.recv(2048).decode()
+        if msg == DISCONNECT_MESSAGE:
+            connected = False
+        print(f'[{addr}] {msg}')
+    socketList.close()
+
+def start():
+    serverSocket.listen()
+    while True:
+        socketList, addr = serverSocket.accept()
+        thread = threading.Thread(target=handle_client, args=(socketList, addr))
+        thread.start()
+        print(f'[ACTIVE CONNECTIONS ] {threading.active_count() - 1}')
+        
+'''
