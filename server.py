@@ -1,11 +1,9 @@
 from socket import *
 from rich import print
-from rich.prompt import Prompt
 from rich.table import Table
-from champlistloader import load_some_champs
+from database import load_some_champs
 from core import Champion, Match, Shape, Team
-from selectors import EVENT_READ, EVENT_WRITE, DefaultSelector
-from threading import Thread
+from selectors import EVENT_READ, DefaultSelector
 from socket import create_server
 import time
 import pickle
