@@ -4,9 +4,18 @@ from rich.table import Table
 from database import load_some_champs
 from core import Champion, Match, Shape, Team
 from selectors import EVENT_READ, DefaultSelector
-from socket import create_server
 import time
 import pickle
+
+sel = DefaultSelector()
+sock = socket()
+sock.setsockopt(SOL_SOCKET, SO_REUSEADDR, 1)
+sock.bind(('localhost', 8888))
+sock.listen()
+sock.setblocking(False)
+sel.register(sock, EVENT_READ, True)
+
+socketList = []
 
 def input_champion(prompt: str,
                    color: str,
@@ -80,6 +89,7 @@ def print_match_summary(match: Match) -> None:
 
 
 def main() -> None:
+
     print('game running..')
 
     player1 = []
@@ -101,44 +111,17 @@ def main() -> None:
     )
     match.play()
 
-    # Print a summary
-    
-    print_match_summary(match)
+    # Print a summary to clients
+    socketList[0].send('incomming match summary'.encode())
+    socketList[2].send('incomming match summary'.encode())
 
-    socketList[0].send('incomming match summary\n'.encode())
-    socketList[2].send('incomming match summary\n'.encode())
     time.sleep(1)
     
     msg = pickle.dumps(match)
     
     socketList[0].send(msg)
     socketList[2].send(msg)
-'''
-    
-    socketList[2].send('matchSummeryIncomming'.encode())
 
-    scoreToString = ''.join(str(match.score))
-    roundToString = ''.join(str(match.rounds))
-    
-    socketList[0].send(scoreToString.encode())
-    socketList[2].send(scoreToString.encode())
-    socketList[0].send(roundToString.encode())
-    socketList[2].send(roundToString.encode())'''
-
-
-#if __name__ == '__main__':
-   # main()
-
-
-sel = DefaultSelector()
-sock = socket()
-sock.setsockopt(SOL_SOCKET, SO_REUSEADDR, 1)
-sock.bind(('localhost', 8888))
-sock.listen()
-sock.setblocking(False)
-sel.register(sock, EVENT_READ, True)
-
-socketList = []
 
 def accept(sock):
     conn, address = sock.accept()
@@ -153,7 +136,7 @@ def accept(sock):
     
 
 def read(conn):
-    data = conn.recv(4096)
+    data = conn.recv(1024)
     if data:
         sentence = data.decode()
         print(sentence)
@@ -173,61 +156,3 @@ while True:
         else:
             read(key.fileobj)
 
-
-
-
-
-'''
-
-sel = DefaultSelector()
-sock = socket(AF_INET, SOCK_STREAM)
-sock.setsockopt(SOL_SOCKET, SO_REUSEADDR, 1)
-sock.bind(('localhost', 8888))
-sock.listen()
-sock.setblocking(False)
-sel.register(sock, EVENT_READ, True)
-
-def accept(sock):
-    conn, address = sock.accept()
-    print('accepted', conn, 'from', address)
-    conn.setblocking(False) 
-    sel.register(conn, EVENT_READ)
-
-def read(conn):
-    data = conn.recv(1024)
-    if data:
-        sentence = data.decode()
-        new_sentence = sentence.upper()
-        conn.send(new_sentence.encode())
-    else:
-        print('Closing', conn)
-        sel.unregister(conn)
-        conn.close()
-
-while True:
-    events = sel.select()
-    for key, _ in events:
-        if key.data:
-            accept(key.fileobj)
-        else:
-            read(key.fileobj)
-
-def handle_client(socketList, addr):
-    print(f'[NEW CONNECTION] {addr} connected.')
-    connected = True
-    while connected:
-        msg = socketList.recv(2048).decode()
-        if msg == DISCONNECT_MESSAGE:
-            connected = False
-        print(f'[{addr}] {msg}')
-    socketList.close()
-
-def start():
-    serverSocket.listen()
-    while True:
-        socketList, addr = serverSocket.accept()
-        thread = threading.Thread(target=handle_client, args=(socketList, addr))
-        thread.start()
-        print(f'[ACTIVE CONNECTIONS ] {threading.active_count() - 1}')
-        
-'''

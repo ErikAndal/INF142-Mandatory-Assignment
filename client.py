@@ -7,6 +7,10 @@ from champlistloader import load_some_champs
 from core import Champion, Match, Shape
 import pickle
 
+sock = socket()
+server_address = ("localhost", 8888)
+sock.connect(server_address)
+
 def print_match_summary(match: Match) -> None:
 
     EMOJI = {
@@ -68,8 +72,7 @@ def print_available_champs(champions: dict[Champion]) -> None:
 
     print(available_champs)
 
-def makeMatchObject(sentence):
-    print('FRA MAKEOBJECT FRA MAKEOBJECT FRA MAKEOBJECT FRA MAKEOBJECT FRA MAKEOBJECT')
+def makeAndPrintMatchObject(sentence):
     str = pickle.loads(sentence)
     print_match_summary(str)
 
@@ -86,18 +89,14 @@ print_available_champs(champions)
 
 print('\n')
 
-sock = socket()
-server_address = ("localhost", 8888)
-sock.connect(server_address)
-
-print('Type champion name followed by Return\n')
+print('When prompted: Enter champion name followed by Return\n')
 
 while True:
     new_sentence = sock.recv(4096).decode('utf-8', 'ignore')
 
-    if new_sentence == 'incomming match summary\n':
+    if new_sentence == 'incomming match summary':
         sentence = sock.recv(4096)
-        makeMatchObject(sentence)
+        makeAndPrintMatchObject(sentence)
         sock.close()
         break
         
