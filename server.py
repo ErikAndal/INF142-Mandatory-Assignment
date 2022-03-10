@@ -44,6 +44,7 @@ def input_champion(prompt: str,
 
 
 
+
 def print_match_summary(match: Match) -> None:
 
     EMOJI = {
@@ -101,8 +102,9 @@ def main() -> None:
     for _ in range(2):
         input_champion('Player 1', 'red', champions, player1, player2, socketList[0])
         input_champion('Player 2', 'blue', champions, player2, player1, socketList[2])
+        
 
-    print('\n')
+    
 
     # Match
     match = Match(
@@ -121,6 +123,8 @@ def main() -> None:
     
     socketList[0].send(msg)
     socketList[2].send(msg)
+
+    socketList.clear()
 
 
 def accept(sock):
