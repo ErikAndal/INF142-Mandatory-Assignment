@@ -1,11 +1,20 @@
+
+
+
 from socket import *
 from rich import print
 from rich.table import Table
-from database import load_some_champs
+from champlistloader import load_some_champs
 from core import Champion, Match, Shape, Team
 from selectors import EVENT_READ, DefaultSelector
 import time
 import pickle
+
+
+# List for connections
+socketList = []
+
+database = b''
 
 sel = DefaultSelector()
 sock = socket()
@@ -14,27 +23,47 @@ sock.bind(('localhost', 8888))
 sock.listen()
 sock.setblocking(False)
 sel.register(sock, EVENT_READ, True)
-
-# List for connections
-socketList = []
+    
 
 def accept(sock):
     conn, address = sock.accept()
     print('accepted', conn, 'from', address)
-    conn.setblocking(False)
+    conn.setblocking(True)
     socketList.append(conn)
     sel.register(conn, EVENT_READ)
     # This ensures that at least two connections are in socketList
-    if len(socketList) >= 2:
+    if len(socketList) == 1:
+        pass
+
+    if len(socketList) >= 3:
+        socketList[0].send('send database'.encode())
+        time.sleep(10)
         main()
     
+
+def recvAndSendData(conn):
+    
+    database = conn.recv(1024)
+    print('dataBASE: ', database)
+    socketList[1].send('incomming database from server'.encode())
+    socketList[2].send('incomming database from server'.encode())
+
+    time.sleep(1)
+
+    socketList[1].send(database)
+    socketList[2].send(database)
+    print('database sent..')
+    
+    
+
 
 def read(conn):
     data = conn.recv(1024)
     if data:
-        sentence = data.decode()
-        print(sentence)
-        conn.send(sentence.encode())
+        sentence = data.decode('utf-8', 'ignore')
+        if sentence == 'incomming database from database':
+            recvAndSendData(conn)
+            print('database: ',database)
 
     else:
         print('Closing', conn)
@@ -115,7 +144,14 @@ def print_match_summary(match: Match) -> None:
 
 def main() -> None:
 
+    
+    #time.sleep(5)
+    
     print('game running..')
+
+    #dbs = pickle.dumps(database)
+
+
 
     player1 = []
     player2 = []
@@ -124,8 +160,8 @@ def main() -> None:
 
     # Champion selection
     for _ in range(2):
-        input_champion('Player 1', 'red', champions, player1, player2, socketList[0])
-        input_champion('Player 2', 'blue', champions, player2, player1, socketList[1])
+        input_champion('Player 1', 'red', champions, player1, player2, socketList[1])
+        input_champion('Player 2', 'blue', champions, player2, player1, socketList[2])
         
     # Match
     match = Match(
@@ -135,8 +171,8 @@ def main() -> None:
     match.play()
 
     # Print a summary to clients
-    socketList[0].send('incomming match summary'.encode())
     socketList[1].send('incomming match summary'.encode())
+    socketList[2].send('incomming match summary'.encode())
 
     # To avoid match summary from being displayed the wrong way
     time.sleep(1)
@@ -145,8 +181,8 @@ def main() -> None:
     msg = pickle.dumps(match)
     
     # Send pickled objects to the two clients
-    socketList[0].send(msg)
     socketList[1].send(msg)
+    socketList[2].send(msg)
 
     # Clear socketList such that game is rerunnable
     socketList.clear()

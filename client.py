@@ -76,20 +76,19 @@ def makeAndPrintMatchObject(sentence):
     str = pickle.loads(sentence)
     print_match_summary(str)
 
-
-
-print('\n'
+def makeAndPrintChampions(sentence):
+    print('inside makeAndPrintChampions ')
+    champions = pickle.loads(sentence)
+    print('\n'
     'Welcome to [bold yellow]Team Local Tactics[/bold yellow]!'
     '\n'
     'Each player choose a champion each time.'
     '\n')
 
-champions = load_some_champs()
-print_available_champs(champions)
+    print('\n')
 
-print('\n')
-
-print('When prompted: Enter champion name followed by Return\n')
+    print('When prompted: Enter champion name followed by Return\n')
+    print_available_champs(champions)
 
 while True:
     new_sentence = sock.recv(1024).decode('utf-8', 'ignore')
@@ -99,7 +98,14 @@ while True:
         makeAndPrintMatchObject(sentence)
         sock.close()
         break
-        
+
+    if new_sentence == 'incomming database from server':
+        database = sock.recv(2048)
+        print('database: ', database)
+        makeAndPrintChampions(database)
+        sock.close()
+        break
+
     print(new_sentence)
     sentence = input('')
     sock.send(sentence.encode())
