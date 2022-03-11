@@ -92,10 +92,10 @@ print('\n')
 print('When prompted: Enter champion name followed by Return\n')
 
 while True:
-    new_sentence = sock.recv(4096).decode('utf-8', 'ignore')
+    new_sentence = sock.recv(1024).decode('utf-8', 'ignore')
 
     if new_sentence == 'incomming match summary':
-        sentence = sock.recv(4096)
+        sentence = sock.recv(1024)
         makeAndPrintMatchObject(sentence)
         sock.close()
         break
