@@ -1,11 +1,13 @@
 import time
 from core import Champion
-from selectors import DefaultSelector
 from socket import *
 from rich import print
-from rich.table import Table
-from core import Champion, Match, Shape
+from core import Champion
 import pickle
+
+sock = socket()
+server_address = ("localhost", 8888)
+sock.connect(server_address)
 
 def _parse_champ(champ_text: str) -> Champion:
     name, rock, paper, scissors = champ_text.split(sep=',')
@@ -25,26 +27,26 @@ def load_some_champs():
     return from_csv('some_champs.txt')
 
 
-sock = socket()
-server_address = ("localhost", 8888)
-sock.connect(server_address)
-
 def sendDatabase():
     championsToSend = load_some_champs()
     msg = pickle.dumps(championsToSend)
+
+    # message to let server know that next, comes pickled objct
     sock.send('incomming database from database'.encode())
+
+    # This is to avoid crashing, basically
     time.sleep(1)
 
+    # Send pickled object
     sock.send(msg)
-    print('picled object sent form database')
-
 
 
 while True:
     new_sentence = sock.recv(1024).decode('utf-8', 'ignore')
+
     if new_sentence == 'send database':
-        print('DATABASEDATABASEDATABASEDATABASEDATABASEDATABASE')
         sendDatabase()
+        sock.close()
         break
 
     print(new_sentence)

@@ -10,10 +10,6 @@ import pickle
 # List for connections
 socketList = []
 
-database = {}
-
-
-
 sel = DefaultSelector()
 sock = socket()
 sock.setsockopt(SOL_SOCKET, SO_REUSEADDR, 1)
@@ -29,38 +25,39 @@ def accept(sock):
     conn.setblocking(True)
     socketList.append(conn)
     sel.register(conn, EVENT_READ)
-    # This ensures that at least two connections are in socketList
-    if len(socketList) == 1:
-        pass
 
+    # This ensures that at least two connections are in socketList
     if len(socketList) >= 3:
         socketList[0].send('send database'.encode())
-        #time.sleep(5)
-        #main()
     
-
-def recvAndSendData(conn):
+# Receive database object form database, and send it to clients, then run main.
+def recvAndSendDataThenRun(conn):
     database = conn.recv(1024)
+
+    # notify
     socketList[1].send('incomming database from server'.encode())
     socketList[2].send('incomming database from server'.encode())
 
     time.sleep(1)
 
+    # send object
     socketList[1].send(database)
     socketList[2].send(database)
+
+    # Unpickled database
     unpickledDatabase = pickle.loads(database)
+
+    # Run main
     main(unpickledDatabase)
-    
-    
-    
 
-
+# Selectors handler per se
 def read(conn):
     data = conn.recv(1024)
     if data:
         sentence = data.decode('utf-8', 'ignore')
+        # wait for "database-header/notifier", recvAndSendDataThenRun handles database object
         if sentence == 'incomming database from database':
-            recvAndSendData(conn)
+            recvAndSendDataThenRun(conn)
 
     else:
         print('Closing', conn)
@@ -139,7 +136,7 @@ def print_match_summary(match: Match) -> None:
         print(('\nDraw :expressionless:'))
 
 
-def main(database1) -> None:
+def main(champions) -> None:
     
     print('game running..')
 
@@ -148,13 +145,13 @@ def main(database1) -> None:
 
     # Champion selection
     for _ in range(2):
-        input_champion('Player 1', 'red', database1, player1, player2, socketList[1])
-        input_champion('Player 2', 'blue', database1, player2, player1, socketList[2])
+        input_champion('Player 1', 'red', champions, player1, player2, socketList[1])
+        input_champion('Player 2', 'blue', champions, player2, player1, socketList[2])
         
     # Match
     match = Match(
-        Team([database1[name] for name in player1]),
-        Team([database1[name] for name in player2])
+        Team([champions[name] for name in player1]),
+        Team([champions[name] for name in player2])
     )
     match.play()
 
@@ -172,7 +169,7 @@ def main(database1) -> None:
     socketList[1].send(msg)
     socketList[2].send(msg)
 
-    # Clear socketList such that game is rerunnable
+    # Clear socketList such that game is rerunnable, in a sense
     socketList.clear()
 
 

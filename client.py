@@ -1,9 +1,6 @@
-from selectors import DefaultSelector
 from socket import *
 from rich import print
 from rich.table import Table
-#from Server import DISCONNECT_MESSAGE
-from champlistloader import load_some_champs
 from core import Champion, Match, Shape
 import pickle
 
@@ -72,38 +69,39 @@ def print_available_champs(champions: dict[Champion]) -> None:
 
     print(available_champs)
 
+
+# Unpickle and print match summary
 def makeAndPrintMatchObject(sentence):
     str = pickle.loads(sentence)
     print_match_summary(str)
 
+# Unpickle and print champions + intro message
 def makeAndPrintChampions(sentence):
-    print('inside makeAndPrintChampions ')
+    
     champions = pickle.loads(sentence)
+
     print('\n'
     'Welcome to [bold yellow]Team Local Tactics[/bold yellow]!'
     '\n'
     'Each player choose a champion each time.'
     '\n')
 
-    print('\n')
-
     print_available_champs(champions)
-
-    print('When prompted: Enter champion name followed by Return')
 
 
 while True:
     new_sentence = sock.recv(1024).decode('utf-8', 'ignore')
 
+    # For recognizing match object
     if new_sentence == 'incomming match summary':
         sentence = sock.recv(1024)
         makeAndPrintMatchObject(sentence)
         sock.close()
         break
 
+    # For recognizing database object
     if new_sentence == 'incomming database from server':
         database = sock.recv(1024)
-        print('database: ', database)
         makeAndPrintChampions(database)
         new_sentence = sock.recv(1024).decode()
 
