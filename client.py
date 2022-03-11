@@ -87,8 +87,10 @@ def makeAndPrintChampions(sentence):
 
     print('\n')
 
-    print('When prompted: Enter champion name followed by Return\n')
     print_available_champs(champions)
+
+    print('When prompted: Enter champion name followed by Return')
+
 
 while True:
     new_sentence = sock.recv(1024).decode('utf-8', 'ignore')
@@ -100,11 +102,10 @@ while True:
         break
 
     if new_sentence == 'incomming database from server':
-        database = sock.recv(2048)
+        database = sock.recv(1024)
         print('database: ', database)
         makeAndPrintChampions(database)
-        sock.close()
-        break
+        new_sentence = sock.recv(1024).decode()
 
     print(new_sentence)
     sentence = input('')

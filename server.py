@@ -1,6 +1,3 @@
-
-
-
 from socket import *
 from rich import print
 from rich.table import Table
@@ -10,11 +7,12 @@ from selectors import EVENT_READ, DefaultSelector
 import time
 import pickle
 
-
 # List for connections
 socketList = []
 
-database = b''
+database = {}
+
+
 
 sel = DefaultSelector()
 sock = socket()
@@ -37,14 +35,12 @@ def accept(sock):
 
     if len(socketList) >= 3:
         socketList[0].send('send database'.encode())
-        time.sleep(10)
-        main()
+        #time.sleep(5)
+        #main()
     
 
 def recvAndSendData(conn):
-    
     database = conn.recv(1024)
-    print('dataBASE: ', database)
     socketList[1].send('incomming database from server'.encode())
     socketList[2].send('incomming database from server'.encode())
 
@@ -52,7 +48,9 @@ def recvAndSendData(conn):
 
     socketList[1].send(database)
     socketList[2].send(database)
-    print('database sent..')
+    unpickledDatabase = pickle.loads(database)
+    main(unpickledDatabase)
+    
     
     
 
@@ -63,7 +61,6 @@ def read(conn):
         sentence = data.decode('utf-8', 'ignore')
         if sentence == 'incomming database from database':
             recvAndSendData(conn)
-            print('database: ',database)
 
     else:
         print('Closing', conn)
@@ -84,7 +81,7 @@ def input_champion(prompt: str,
         # Open for blocking, else I get: "BlockingIOError: [Errno 35] Resource temporarily unavailable"
         sock.setblocking(True)
 
-        sock.send(f'[{color}]{prompt}:\r'.encode())
+        sock.send(f'[{color}]{prompt}:'.encode())
 
         match sock.recv(1024).decode():
             case name if name not in champions:
@@ -142,31 +139,22 @@ def print_match_summary(match: Match) -> None:
         print(('\nDraw :expressionless:'))
 
 
-def main() -> None:
-
-    
-    #time.sleep(5)
+def main(database1) -> None:
     
     print('game running..')
-
-    #dbs = pickle.dumps(database)
-
-
 
     player1 = []
     player2 = []
 
-    champions = load_some_champs()
-
     # Champion selection
     for _ in range(2):
-        input_champion('Player 1', 'red', champions, player1, player2, socketList[1])
-        input_champion('Player 2', 'blue', champions, player2, player1, socketList[2])
+        input_champion('Player 1', 'red', database1, player1, player2, socketList[1])
+        input_champion('Player 2', 'blue', database1, player2, player1, socketList[2])
         
     # Match
     match = Match(
-        Team([champions[name] for name in player1]),
-        Team([champions[name] for name in player2])
+        Team([database1[name] for name in player1]),
+        Team([database1[name] for name in player2])
     )
     match.play()
 
